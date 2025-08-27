@@ -215,10 +215,16 @@ server.tool(
 
 async function main() {
     const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("Weather MCP Server running on stdio");
 
-    await new Promise(() => {})
+    transport.onclose = () => {
+        console.error("Stdio transport closed — mantendo processo vivo");
+    };
+
+    await server.connect(transport);
+    console.error("Weather MCP Server connected on stdio");
+
+    // Loop infinito para manter vivo
+    await new Promise(() => { });
 }
 
 main().catch((error) => {

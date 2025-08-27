@@ -145,8 +145,12 @@ server.tool("get_forecast", "Get weather forecast for a location", {
 });
 async function main() {
     const transport = new StdioServerTransport();
+    transport.onclose = () => {
+        console.error("Stdio transport closed — mantendo processo vivo");
+    };
     await server.connect(transport);
-    console.error("Weather MCP Server running on stdio");
+    console.error("Weather MCP Server connected on stdio");
+    // Loop infinito para manter vivo
     await new Promise(() => { });
 }
 main().catch((error) => {
