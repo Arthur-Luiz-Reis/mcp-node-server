@@ -147,6 +147,7 @@ async function main() {
     const transport = new StdioServerTransport();
     await server.connect(transport);
     console.error("Weather MCP Server running on stdio");
+    await new Promise(() => { });
 }
 main().catch((error) => {
     console.error("Fatal error in main():", error);
