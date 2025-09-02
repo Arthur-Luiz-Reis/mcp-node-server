@@ -45,10 +45,7 @@ const transport = new StdioServerTransport();
 const server = new McpServer({
     name: "weather",
     version: "1.0.0",
-    capabilities: {
-        resources: {},
-        tools: {},
-    },
+
 });
 
 async function makeNWSRequest<T>(url: string): Promise<T | null> {
@@ -201,4 +198,6 @@ server.tool(
     }
 );
 
-server.connect(transport).catch(console.error);
+await server.connect(transport);
+
+await new Promise(() => {});
