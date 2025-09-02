@@ -45,7 +45,10 @@ const transport = new StdioServerTransport();
 const server = new McpServer({
     name: "weather",
     version: "1.0.0",
-
+    capabilities: {
+        resources: {},
+        tools: {},
+    },
 });
 
 async function makeNWSRequest<T>(url: string): Promise<T | null> {
@@ -198,6 +201,15 @@ server.tool(
     }
 );
 
-await server.connect(transport);
+async function main() {
+  try {
+    await server.connect(transport);
+    console.log("MCP Server is now connected and waiting...");
+    await new Promise(() => {});
+  } catch (error) {
+    console.error("Erro ao iniciar MCP Server:", error);
+    process.exit(1);
+  }
+}
 
-await new Promise(() => {});
+main();
