@@ -205,7 +205,8 @@ async function main() {
   try {
     await server.connect(transport);
     console.log("MCP Server is now connected and waiting...");
-    await new Promise(() => {});
+
+    setInterval(() => {}, 1 << 30);
   } catch (error) {
     console.error("Erro ao iniciar MCP Server:", error);
     process.exit(1);
