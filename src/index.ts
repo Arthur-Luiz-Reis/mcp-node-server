@@ -2,8 +2,45 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
+interface AlertFeature {
+    properties: {
+        event?: string;
+        areaDesc?: string;
+        severity?: string;
+        status?: string;
+        headline?: string;
+    };
+}
+
+interface ForecastPeriod {
+    name?: string;
+    temperature?: number;
+    temperatureUnit?: string;
+    windSpeed?: string;
+    windDirection?: string;
+    shortForecast?: string;
+}
+
+interface AlertsResponse {
+    features: AlertFeature[];
+}
+
+interface PointsResponse {
+    properties: {
+        forecast?: string;
+    };
+}
+
+interface ForecastResponse {
+    properties: {
+        periods: ForecastPeriod[];
+    };
+}
+
 const NWS_API_BASE = "https://api.weather.gov";
 const USER_AGENT = "weather-app/1.0";
+
+const transport = new StdioServerTransport();
 
 const server = new McpServer({
     name: "weather",
@@ -33,19 +70,8 @@ async function makeNWSRequest<T>(url: string): Promise<T | null> {
     }
 }
 
-interface AlertFeature {
-    properties: {
-        event?: string;
-        areaDesc?: string;
-        severity?: string;
-        status?: string;
-        headline?: string;
-    };
-}
-
 function formatAlert(feature: AlertFeature): string {
     const props = feature.properties;
-
     return [
         `Event: ${props.event || "Unknown"}`,
         `Area: ${props.areaDesc || "Unknown"}`,
@@ -56,38 +82,12 @@ function formatAlert(feature: AlertFeature): string {
     ].join("\n");
 }
 
-interface ForecastPeriod {
-    name?: string;
-    temperature?: number;
-    temperatureUnit?: string;
-    windSpeed?: string;
-    windDirection?: string;
-    shortForecast?: string;
-}
-
-interface AlertsResponse {
-    features: AlertFeature[];
-}
-
-interface PointsResponse {
-    properties: {
-        forecast?: string;
-    };
-}
-
-interface ForecastResponse {
-    properties: {
-        periods: ForecastPeriod[];
-    };
-}
-
 server.tool(
     "get_alerts",
     "Get weather alerts for a state",
     {
-        state: z.string().length(2).describe("Two-letter state code (e.g. CA, NY)")
+        state: z.string().length(2).describe("Two-letter state code (e.g. CA, NY)"),
     },
-
     async ({ state }) => {
         const stateCode = state.toUpperCase();
         const alertsUrl = `${NWS_API_BASE}/alerts?area=${stateCode}`;
@@ -98,7 +98,7 @@ server.tool(
                 content: [
                     {
                         type: "text",
-                        text: "Falied to retrieve alerts data.",
+                        text: "Failed to retrieve alerts data.",
                     },
                 ],
             };
@@ -117,7 +117,7 @@ server.tool(
         }
 
         const formattedAlerts = features.map(formatAlert);
-        const alertsText = `Active alerts for ${stateCode}: \n\n ${formattedAlerts.join("\n")}`;
+        const alertsText = `Active alerts for ${stateCode}:\n\n${formattedAlerts.join("\n")}`;
 
         return {
             content: [
@@ -127,7 +127,7 @@ server.tool(
                 },
             ],
         };
-    },
+    }
 );
 
 server.tool(
@@ -137,42 +137,30 @@ server.tool(
         latitude: z.number().min(-90).max(90).describe("Latitude of the location"),
         longitude: z.number().min(-180).max(180).describe("Longitude of the location"),
     },
-
     async ({ latitude, longitude }) => {
-        const pointsUrl = `${NWS_API_BASE}/points/${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+        const pointsUrl = `${NWS_API_BASE}/points/${latitude.toFixed(4)},${longitude.toFixed(4)}`;
         const pointsData = await makeNWSRequest<PointsResponse>(pointsUrl);
 
-        if (!pointsData) {
+        if (!pointsData || !pointsData.properties?.forecast) {
             return {
                 content: [
                     {
                         type: "text",
-                        text: `Failed to retrieve grid point data for coordinates: ${latitude}, ${longitude}. This location may not be supported by the NWS API (only US locations are supported).`,
-
+                        text: "Failed to retrieve forecast information for the provided location.",
                     },
                 ],
             };
         }
 
-        const forecastUrl = pointsData.properties?.forecast;
-        if (!forecastUrl) {
-            return {
-                content: [
-                    {
-                        type: "text",
-                        text: "Failed to get forecast URL from grid point data",
-                    },
-                ],
-            };
-        }
-
+        const forecastUrl = pointsData.properties.forecast;
         const forecastData = await makeNWSRequest<ForecastResponse>(forecastUrl);
+
         if (!forecastData) {
             return {
                 content: [
                     {
                         type: "text",
-                        text: "Failed to retrieve forecast data",
+                        text: "Failed to retrieve forecast data.",
                     },
                 ],
             };
@@ -184,20 +172,20 @@ server.tool(
                 content: [
                     {
                         type: "text",
-                        text: "No forecast periods available",
+                        text: "No forecast periods available.",
                     },
                 ],
             };
         }
 
-        const formattedForecast = periods.map((period: ForecastPeriod) =>
+        const formattedForecast = periods.map((period) =>
             [
                 `${period.name || "Unknown"}:`,
                 `Temperature: ${period.temperature || "Unknown"}°${period.temperatureUnit || "F"}`,
                 `Wind: ${period.windSpeed || "Unknown"} ${period.windDirection || ""}`,
                 `${period.shortForecast || "No forecast available"}`,
                 "---",
-            ].join("\n"),
+            ].join("\n")
         );
 
         const forecastText = `Forecast for ${latitude}, ${longitude}:\n\n${formattedForecast.join("\n")}`;
@@ -210,24 +198,7 @@ server.tool(
                 },
             ],
         };
-    },
+    }
 );
 
-async function main() {
-    const transport = new StdioServerTransport();
-
-    transport.onclose = () => {
-        console.error("Stdio transport closed — mantendo processo vivo");
-    };
-
-    await server.connect(transport);
-    console.error("Weather MCP Server connected on stdio");
-
-    // Loop infinito para manter vivo
-    await new Promise(() => { });
-}
-
-main().catch((error) => {
-    console.error("Fatal error in main():", error);
-    process.exit(1);
-});
+server.connect(transport).catch(console.error);
