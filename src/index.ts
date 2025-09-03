@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { minLength } from "zod/v4";
 
 interface AlertFeature {
     properties: {
@@ -39,14 +40,14 @@ interface ForecastResponse {
 
 const NWS_API_BASE = "https://api.weather.gov";
 const USER_AGENT = "weather-app/1.0";
-
 const transport = new StdioServerTransport();
+const toolCollection: any[] = [];
 
 const server = new McpServer({
     name: "weather",
     version: "1.0.0",
     capabilities: {
-        resources: {},
+        resources: { tools: async () => ({ tools: toolCollection }) },
         tools: {},
     },
 });
@@ -130,6 +131,17 @@ server.tool(
     }
 );
 
+toolCollection.push({
+    name: "get_alerts",
+    description: "Get weather alerts for a state",
+    schema: { 
+        type: "object",
+        properties: {
+            state: { type: "string", minLength: 2 }
+        }, required: ["state"]
+    },
+});
+
 server.tool(
     "get_forecast",
     "Get weather forecast for a location",
@@ -201,10 +213,23 @@ server.tool(
     }
 );
 
+toolCollection.push({
+    name: "get_forecast",
+    description: "Get weather forecast for a location",
+    schema: {
+        type: "object",
+        properties: {
+            latitude: { type: "number" },
+            longitude: { type: "number" },
+        },
+        required: ["latitude", "longitude"]
+    }
+});
+
 async function main() {
   try {
     await server.connect(transport);
-    console.log("MCP Server is now connected and waiting...");
+    console.error("MCP Server is now connected and waiting...");
     await new Promise(() => {});
   } catch (error) {
     console.error("Erro ao iniciar MCP Server:", error);
