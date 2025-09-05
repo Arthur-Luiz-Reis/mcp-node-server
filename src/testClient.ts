@@ -1,0 +1,75 @@
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import path from "node:path";
+
+function makeSafeEnv(env: NodeJS.ProcessEnv): Record<string, string> {
+    return Object.fromEntries(
+        Object.entries(env).filter(([_, v]) => typeof v === "string")
+    ) as Record<string, string>;
+}
+
+function printTextContent(label: string, result: unknown, max = 800) {
+    console.log(`→ ${label}:`);
+    if (
+        result &&
+        typeof result === "object" &&
+        "content" in result &&
+        Array.isArray((result as any).content)
+    ) {
+        for (const c of (result as any).content) {
+            if (c && typeof c === "object" && (c as any).type === "text" && typeof (c as any).text === "string") {
+                console.log((c as any).text.slice(0, max));
+            }
+        }
+    } else {
+        console.log(JSON.stringify(result, null, 2));
+    }
+}
+
+async function main() {
+    const projectRoot = process.cwd();
+    const serverEntryJs = path.join(projectRoot, "build", "index.js");
+
+    const transport = new StdioClientTransport({
+        command: process.execPath,
+        args: [serverEntryJs],
+        cwd: projectRoot,
+        env: makeSafeEnv(process.env),
+    });
+
+    const client = new Client({ name: "test-client", version: "0.1.0" });
+    await client.connect(transport);
+    console.log("initialize OK");
+
+    const list = await client.listTools();
+    console.log("tools/list:", list.tools.map(t => t.name));
+
+    try {
+        const alerts = await client.callTool({
+            name: "get_alerts",
+            arguments: { state: "NY" },
+        });
+        console.log("ALERTAS NO ESTADO DE NOVA YORK: ")
+        printTextContent("get_alerts(Nova York)", alerts);
+    } catch (e) {
+        console.error("get_alerts error:", e);
+    }
+
+    try {
+        const forecast = await client.callTool({
+            name: "get_forecast",
+            arguments: { latitude: 40.7128, longitude: -74.0060 }
+        });
+        console.log("CLIMA NA CIDADE DE NOVA YORK:");
+        printTextContent("get_forecast(Cidade de Nova York)", forecast);
+    } catch (e) {
+        console.error("get_forecast error:", e);
+    }
+
+    await client.close();
+}
+
+main().catch(err => {
+    console.error("test client failed:", err);
+    process.exit(1);
+});
