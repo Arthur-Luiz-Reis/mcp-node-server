@@ -228,7 +228,7 @@ toolCollection.push({
 async function main() {
   try {
     await server.connect(transport);
-    console.error("MCP Server is now connected and waiting...");
+    console.info("MCP Server is now connected and waiting...");
     await new Promise(() => {});
   } catch (error) {
     console.error("Erro ao iniciar MCP Server:", error);
