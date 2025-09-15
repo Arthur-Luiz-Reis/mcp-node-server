@@ -66,6 +66,15 @@ async function main() {
         console.error("get_forecast error:", e);
     }
 
+    for (const tool of list.tools) {
+    console.log("Nome:", tool.name);
+    console.log("Descrição:", tool.description);
+    console.log("Schema:", JSON.stringify(tool.inputSchema, null, 2));
+}
+
+    const listTools = await client.listTools();
+    console.log("tools/list (RAW):", JSON.stringify(listTools, null, 2));
+
     await client.close();
 }
 
