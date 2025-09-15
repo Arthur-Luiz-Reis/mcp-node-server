@@ -8,10 +8,6 @@ const toolCollection = [];
 const server = new McpServer({
     name: "weather",
     version: "1.0.0",
-    capabilities: {
-        resources: { tools: async () => ({ tools: toolCollection }) },
-        tools: {},
-    },
 });
 async function makeNWSRequest(url) {
     const headers = {
@@ -160,7 +156,7 @@ toolCollection.push({
 async function main() {
     try {
         await server.connect(transport);
-        console.error("MCP Server is now connected and waiting...");
+        console.info("MCP Server is now connected and waiting...");
         await new Promise(() => { });
     }
     catch (error) {

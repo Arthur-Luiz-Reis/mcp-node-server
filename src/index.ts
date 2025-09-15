@@ -45,10 +45,6 @@ const toolCollection: any[] = [];
 const server = new McpServer({
     name: "weather",
     version: "1.0.0",
-    capabilities: {
-        resources: { tools: async () => ({ tools: toolCollection }) },
-        tools: {},
-    },
 });
 
 async function makeNWSRequest<T>(url: string): Promise<T | null> {

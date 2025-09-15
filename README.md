@@ -33,7 +33,7 @@ Compilar o TypeScript e inicia o servidor em modo desenvolvimento com:
 
 ``` bash
 
-npm run dev
+npm start
 
 ```
 
